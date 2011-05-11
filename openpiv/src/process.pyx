@@ -179,6 +179,89 @@ def extended_search_area_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
         return u, v, sig2noise
     else:
         return u, v
+ 
+
+def mdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a, 
+              np.ndarray[DTYPEi_t, ndim=2] frame_b,
+              int window_size,
+              int overlap,
+              float dt,
+              int n_iter,
+              str subpixel_method='gaussian',
+              nfftx=None,
+              nffty=None):
+    
+    cdef int i, j, k, l, I, J, it
+    
+    # subpixel peak location
+    cdef int i_peak, j_peak
+    
+    # shape of the resulting flow field
+    cdef int n_cols, n_rows
+    
+    # get field shape
+    n_rows, n_cols = get_field_shape( (frame_a.shape[0], frame_a.shape[1]), window_size, overlap )
+    
+    # define arrays
+    cdef np.ndarray[DTYPEi_t, ndim=2] window_a = np.zeros([window_size, window_size], dtype=DTYPEi)
+    cdef np.ndarray[DTYPEi_t, ndim=2] window_b = np.zeros([window_size, window_size], dtype=DTYPEi)
+    cdef np.ndarray[DTYPEf_t, ndim=2] corr = np.zeros([window_size, window_size], dtype=DTYPEf)
+        
+    cdef np.ndarray[DTYPEf_t, ndim=2] u = np.zeros([n_rows, n_cols], dtype=DTYPEf)
+    cdef np.ndarray[DTYPEf_t, ndim=2] v = np.zeros([n_rows, n_cols], dtype=DTYPEf)
+    
+    cdef np.ndarray[DTYPEi_t, ndim=2] disp_u = np.zeros([n_rows, n_cols], dtype=DTYPEi)
+    cdef np.ndarray[DTYPEi_t, ndim=2] disp_v = np.zeros([n_rows, n_cols], dtype=DTYPEi)
+    
+    
+    for it in range(n_iter):
+        # loop over the interrogation windows
+        # i, j are the row, column indices of the top left corner
+        I = 0
+        for i in range( 0, frame_a.shape[0]-window_size, window_size-overlap ):
+            J = 0
+            for j in range( 0, frame_a.shape[1]-window_size, window_size-overlap ):
+    
+                # get interrogation window matrix from frame a, shifted by half displacement
+                for k in range( window_size ):
+                    for l in range( window_size ):
+                        window_a[k,l] = frame_a[i+k+disp_u[I,J]//2, j+l+disp_v[J,J]//2]
+                        
+                # get interrogation window matrix from frame b, shifted by half displacement
+                for k in range( window_size ):
+                    for l in range( window_size ):
+                        window_a[k,l] = frame_b[i+k-(disp_u[I,J]-disp_u[I,J]//2), j+l-(disp_v[I,J]-disp_v[J,J]//2)]
+                            
+                # compute correlation map 
+                corr = correlate_windows( window_a, window_b, nfftx=nfftx, nffty=nffty )
+                c = CorrelationFunction( corr )
+                
+                if it < n_iter-1:
+                    # find pixel approximation of the peak center: we want displacements
+                    # for window shifting
+                    i_peak, j_peak = c.pixel_peak_position( )
+                    # displacements
+                    disp_v[I,J] = i_peak - corr.shape[0]/2
+                    disp_u[I,J] = j_peak - corr.shape[0]/2
+                else:
+                    i_peak, j_peak = c.subpixel_peak_position( subpixel_method )
+                    # displacements
+                    v[I,J] = -(i_peak - corr.shape[0]/2)/dt
+                    u[I,J] =  (j_peak - corr.shape[0]/2)/dt
+                
+               
+                # go to next vector
+                J = J + 1
+                    
+            # go to next vector
+            I = I + 1 
+
+    return u, v
+    
+    
+
+
+ 
     
 class CorrelationFunction( ):
     def __init__ ( self, corr ):
@@ -195,6 +278,11 @@ class CorrelationFunction( ):
         
         # get first peak
         self.peak1, self.corr_max1 = self._find_peak( self.data )
+        
+    def pixel_peak_position( self ):
+        """The integer location of the first correlation peak."""
+        ij, dummy = self._find_peak( self.data )
+        return ij[0], ij[1]
         
     def _find_peak ( self, array ):
         """Find row and column indices of the highest peak in an array."""    
