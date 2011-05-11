@@ -180,16 +180,18 @@ def extended_search_area_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
     else:
         return u, v
  
-
-def mdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a, 
-              np.ndarray[DTYPEi_t, ndim=2] frame_b,
-              int window_size,
-              int overlap,
-              float dt,
-              int n_iter,
-              str subpixel_method='gaussian',
-              nfftx=None,
-              nffty=None):
+def msdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a, 
+               np.ndarray[DTYPEi_t, ndim=2] frame_b,
+               int window_size,
+               int overlap,
+               float dt,
+               int n_iter,
+               str subpixel_method='gaussian',
+               nfftx=None,
+               nffty=None):
+    """
+    An implementation of the multistep discrete window offset algorithm.
+    """               
     
     cdef int i, j, k, l, I, J, it
     
@@ -210,8 +212,8 @@ def mdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
     cdef np.ndarray[DTYPEf_t, ndim=2] u = np.zeros([n_rows, n_cols], dtype=DTYPEf)
     cdef np.ndarray[DTYPEf_t, ndim=2] v = np.zeros([n_rows, n_cols], dtype=DTYPEf)
     
-    cdef np.ndarray[DTYPEi_t, ndim=2] disp_u = np.zeros([n_rows, n_cols], dtype=DTYPEi)
-    cdef np.ndarray[DTYPEi_t, ndim=2] disp_v = np.zeros([n_rows, n_cols], dtype=DTYPEi)
+    cdef np.ndarray[DTYPEi_t, ndim=3] disp_u = np.zeros([n_iter, n_rows, n_cols], dtype=DTYPEi)
+    cdef np.ndarray[DTYPEi_t, ndim=3] disp_v = np.zeros([n_iter, n_rows, n_cols], dtype=DTYPEi)
     
     
     for it in range(n_iter):
@@ -221,16 +223,30 @@ def mdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
         for i in range( 0, frame_a.shape[0]-window_size, window_size-overlap ):
             J = 0
             for j in range( 0, frame_a.shape[1]-window_size, window_size-overlap ):
-    
-                # get interrogation window matrix from frame a, shifted by half displacement
+                
+                # get interrogation window matrix from frame a, shifted by half displacement backwards
                 for k in range( window_size ):
                     for l in range( window_size ):
-                        window_a[k,l] = frame_a[i+k+disp_u[I,J]//2, j+l+disp_v[J,J]//2]
+                        #print 'a', I, J, k, l, i+k+disp_u[I,J]//2, j+l+disp_v[I,J]//2
+                        # fill with zeros if we are out of the borders
+                        if i+k+disp_u[it,I,J]//2 < 0 or i+k+disp_u[it,I,J]//2 >= frame_a.shape[0]:
+                            window_a[k,l] = 0
+                        if j+l+disp_v[it,I,J]//2 < 0 or j+l+disp_v[it,I,J]//2 >= frame_a.shape[1]:
+                            window_a[k,l] = 0
+                        else:
+                            window_a[k,l] = frame_a[i+k+disp_u[it,I,J]//2, j+l+disp_v[it,I,J]//2]
                         
-                # get interrogation window matrix from frame b, shifted by half displacement
+                # get interrogation window matrix from frame b, shifted by half displacement forwards
                 for k in range( window_size ):
                     for l in range( window_size ):
-                        window_a[k,l] = frame_b[i+k-(disp_u[I,J]-disp_u[I,J]//2), j+l-(disp_v[I,J]-disp_v[J,J]//2)]
+                        #print 'b', I, J, k, l, i+k+disp_u[I,J]//2, j+l+disp_v[I,J]//2
+                        # fill with zeros if we are out of the borders
+                        if i+k+(disp_u[it,I,J]-disp_u[it,I,J]//2) < 0 or i+k+(disp_u[it,I,J]-disp_u[it,I,J]//2) >= frame_b.shape[0]:
+                            window_b[k,l] = 0
+                        if j+l+(disp_v[it,I,J]-disp_v[it,I,J]//2) < 0 or j+l+(disp_v[it,I,J]-disp_v[it,I,J]//2) >= frame_b.shape[1]:
+                            window_b[k,l] = 0
+                        else:
+                            window_b[k,l] = frame_b[i+k+(disp_u[it,I,J]-disp_u[it,I,J]//2), j+l+(disp_v[it,I,J]-disp_v[it,I,J]//2)]
                             
                 # compute correlation map 
                 corr = correlate_windows( window_a, window_b, nfftx=nfftx, nffty=nffty )
@@ -241,14 +257,14 @@ def mdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
                     # for window shifting
                     i_peak, j_peak = c.pixel_peak_position( )
                     # displacements
-                    disp_v[I,J] = i_peak - corr.shape[0]/2
-                    disp_u[I,J] = j_peak - corr.shape[0]/2
+                    disp_u[it+1,I,J] = disp_u[it,I,J] + j_peak - corr.shape[0]/2
+                    disp_v[it+1,I,J] = disp_v[it,I,J] + i_peak - corr.shape[0]/2
                 else:
                     i_peak, j_peak = c.subpixel_peak_position( subpixel_method )
                     # displacements
-                    v[I,J] = -(i_peak - corr.shape[0]/2)/dt
-                    u[I,J] =  (j_peak - corr.shape[0]/2)/dt
-                
+                    v[I,J] = ( - disp_v[it+1,I,J] - (i_peak - corr.shape[0]/2) ) / dt
+                    u[I,J] = (   disp_u[it+1,I,J] + (j_peak - corr.shape[0]/2) ) / dt
+               
                
                 # go to next vector
                 J = J + 1
@@ -258,11 +274,7 @@ def mdwo_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
 
     return u, v
     
-    
-
-
- 
-    
+  
 class CorrelationFunction( ):
     def __init__ ( self, corr ):
         """A class representing a cross correlation function.
@@ -442,6 +454,7 @@ class CorrelationFunction( ):
             sig2noise = np.inf    
             
         return sig2noise
+
 
 def get_coordinates( image_size, window_size, overlap ):
     """Compute the x, y coordinates of the centers of the interrogation windows.
