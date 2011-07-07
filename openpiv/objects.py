@@ -1,7 +1,4 @@
-#!/usr/bin/python
-
-"""The openpiv.objects module defines an object oriented interface for OpenPiv."""
-
+__doc__="""The openpiv.objects module defines an object oriented interface for OpenPiv."""
 __licence_ = """
 Copyright (C) 2011  www.openpiv.net
 
@@ -19,62 +16,173 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import numpy as np
 import glob
 import sys
 import os.path
 import multiprocessing
+from UserDict import UserDict
+import ConfigParser
 
 import numpy as np
 import scipy.misc
 import matplotlib.pyplot as pl
 
+import openpiv.process
+import openpiv.validation
+import openpiv.lib
+
 class ImagePair():
     """A class for holding data for two images."""
-    def __init__ ( self, image_file_a, image_file_b ):
-        """
-        """
-        self.image_file_a = image_file_a
-        self.image_file_b = image_file_b
+    def __init__ ( self, file_a, file_b, index ):
+        """Create an image pair object."""
+        self.file_a = file_a
+        self.file_b = file_b
         
-        self.frame_a = openpiv.tools.imread( image_file_a )
-        self.frame_b = openpiv.tools.imread( image_file_b )
-        
-    def preprocess( self ):
-        """
-        """
-        pass
+        self.frame_a = imread( file_a )
+        self.frame_b = imread( file_b )
+
+        self.index = index        
+        self.size = self.frame_a.shape
         
     def process( self, parameters ):
-        """
-        """
-        pass
-                    
+        """Process an image pair."""
+        # extract parameters specific of the processing algorithm
+        try:
+            if parameters['method'] == 'extended_search_area_piv':
+                
+                # call processing function
+                out = openpiv.process.extended_search_area_piv( frame_a          = self.frame_a,
+                                                                frame_b          = self.frame_b,
+                                                                window_size      = parameters['window_size'],
+                                                                overlap          = parameters['overlap'],
+                                                                dt               = parameters['dt'],
+                                                                search_area_size = parameters['search_area_size'],
+                                                                subpixel_method  = parameters['subpixel_method'],
+                                                                sig2noise_method = parameters['sig2noise_method'],
+                                                                width            = parameters['width'],
+                                                                nfftx            = parameters['nfftx'],
+                                                                nffty            = parameters['nffty']
+                                                              )
+                
+                # unpack output depending on if we have s2n ratio too.
+                if parameters['sig2noise_method']:
+                    u, v, s2n = out
+                else:
+                    u, v = out
+                    s2n = None
+                
+        except KeyError, msg:
+            raise PivParamsError("'%s' option is missing" % msg)
+                             
+        # get coordinates
+        x, y = openpiv.process.get_coordinates(self.size, parameters['window_size'], parameters['overlap'] )
+        
+        return FlowField(x, y, u, v, parameters, s2n)
+
 class FlowField():
     """A class for holding velocity data for validation/interpolation/postprocessing."""
-    def __init__ ( x, y, u, v ):
+    def __init__ ( self, x, y, u, v, parameters, s2n=None, ):
         """
         """
         self.x = x
         self.y = y
         self.u = u
         self.v = v
+        self.s2n = s2n
+        self.mask = np.zeros(u.shape, dtype=bool)
+        self.parameters
         
-    def validate ( self, method ):
-        """
-        Valiidation step.
-        """
-        pass
+    def validate ( self, method, u_thresholds=None, v_thresholds=None, std_threshold=None, sn_threshold=None, u_threshold=None, v_threshold=None, size=None):
+        """Validation step."""
         
-    def replace_outliers( self ):
-        """
-        """
-        pass
+        if method=='global':
+            if not u_thresholds and v_thresholds:
+                raise ValueError("global validation requires options 'u_thresholds' and 'v_thresholds' to be given")
+            self.mask = openpiv.validation.global_val( self.u, self.v, u_thresholds, v_thresholds )
+            
+        if method=='global_std':
+            if not std_threshold:
+                raise ValueError("global std validation requires option 'std_threshold' to be given")
+            self.mask = openpiv.validation.global_std( self.u, self.v, std_theshold )
+            
+        if method=='sig2noise':
+            if not self.s2n:
+                raise ValueError("signoise validation requires signal-to-noise ration information, which was not computed initially")
+            if not sn_threshold:
+                raise ValueError("signoise validation requires option 'sn_threshold' to be given")
+            self.mask = openpiv.validation.sig2noise_val( self.u, self.v, self.s2n, sn_threshold )
+            
+        if method=='local_median':
+            if not u_threshold and v_threshold and size:
+                raise ValueError("local median validation requires options 'u_threshold', 'v_threshold' and 'size' to be given")
+            self.mask = openpiv.validation.local_median_val( self.u, self.v, u_threshold, v_threshold, size)
         
-    def rescale( self, args ):
-        pass
-    
-    
+    def replace_outliers( max_iter=5, tol=1e-3, kernel_size=1 ):
+        """Replace invalid vectors in the  velocity field using an iterative image inpainting algorithm.
+        
+        The algorithm is the following:
+        
+        1) For each element in the arrays of the ``u`` and ``v`` components, replace it by a weighted average
+           of the neighbouring elements which are not invalid themselves. The weights depends
+           of the method type. If ``method=localmean`` weight are equal to 1/( (2*kernel_size+1)**2 -1 )
+           
+        2) Several iterations are needed if there are adjacent invalid elements.
+           If this is the case, inforation is "spread" from the edges of the missing
+           regions iteratively, until the variation is below a certain threshold. 
+        
+        Parameters
+        ----------
+        max_iter : int
+            the number of iterations of the inpainting algorithm
+        tol : float
+            the algorithm is stopped if root mean square variation between iteration
+            is lower that this threshold. This number has physical significance of a velocity.
+        kernel_size : int
+            the size of the kernel, default is 1
+        """
+        # set outliers to nan, so that we can then replace them
+        self.u[self.mask] = np.nan
+        self.v[self.mask] = np.nan
+        
+        self.u = openpiv.lib.replace_nans( u, method='localmean', max_iter=max_iter, tol=tol, kernel_size=kernel_size )
+        self.v = openpiv.lib.replace_nans( v, method='localmean', max_iter=max_iter, tol=tol, kernel_size=kernel_size )
+        
+    def save_to_file( filename, fmt='%8.4f', delimiter='\t' ):
+        """Save flow field data to an ascii file.
+        
+        Parameters
+        ----------
+        filename : string
+            the path of the file where to save the flow field
+            
+        fmt : string
+            a format string. See documentation of numpy.savetxt
+            for more details.
+        
+        delimiter : string
+            character separating columns
+        """
+        # build output array
+        out = np.vstack( [m.ravel() for m in [x, y, u, v, mask] ] )
+                
+        # open data file
+        f = open(filename, 'r')
+
+        # save parameters to file
+        params = '\n# '.join( ["%s = %s" % (k.rjust(30), repr(v).ljust(30)) for k, v in self. ] 
+        
+        #write header
+        header = """
+        # Openpiv output data file: saved %s
+        # Made with Openpiv version %s
+        # 
+        # Processing parameters
+        # ---------------------
+        # 
+        # x y u v mask""" % (time, version, params)
+        
+        np.savetxt( filename, out.T, fmt=fmt, delimiter=delimiter )
+
     
 class ProcessParameters( UserDict ):
     def __init__ (self, config_file='' ):
@@ -125,6 +233,8 @@ class ProcessParameters( UserDict ):
                     self[k] = float(v)
                 except ValueError:
                     pass
+            if v == 'None':
+                self[k] = None
     
     def pretty_print ( self ):
         """
@@ -177,132 +287,6 @@ class Hdf5Database( ):
     def close ( self ):
         """Close file"""
         self._fh.close()
- 
-
-def display_vector_field( filename,**kw):
-    """ Displays quiver plot of the data stored in the file 
-    
-    
-    Parameters
-    ----------
-    filename :  string
-        the absolute path of the text file
-    
-    Key arguments   : (additional parameters, optional)
-        *scale*: [None | float]
-        *width*: [None | float]
-    
-    
-    See also:
-    ---------
-    matplotlib.pyplot.quiver
-    
-        
-    Examples
-    --------
-    
-    >>> openpiv.tools.display_vector_field('./exp1_0000.txt',scale=100, width=0.0025) 
-
-    
-    """
-    
-    a = np.loadtxt(filename)
-    pl.figure()
-    pl.hold(True)
-    invalid = a[:,4].astype('bool')
-    
-    valid = ~invalid
-    pl.quiver(a[invalid,0],a[invalid,1],a[invalid,2],a[invalid,3],color='r',**kw)
-    pl.quiver(a[valid,0],a[valid,1],a[valid,2],a[valid,3],color='b',**kw)
-    pl.draw()
-    pl.show()
-
-def imread( filename ):
-    """Read an image file into a numpy array
-    using scipy.misc.imread
-    
-    Parameters
-    ----------
-    filename :  string
-        the absolute path of the image file 
-        
-    Returns
-    -------
-    frame : np.ndarray
-        a numpy array with grey levels
-        
-        
-    Examples
-    --------
-    
-    >>> image = openpiv.tools.imread( 'image.bmp' )
-    >>> print image.shape 
-        (1280, 1024)
-    
-    
-    """
-    
-    return scipy.misc.imread( filename, flatten=0).astype(np.int32)
-
-def save( x, y, u, v, mask, filename, fmt='%8.4f', delimiter='\t' ):
-    """Save flow field to an ascii file.
-    
-    Parameters
-    ----------
-    x : 2d np.ndarray
-        a two dimensional array containing the x coordinates of the 
-        interrogation window centers, in pixels.
-        
-    y : 2d np.ndarray
-        a two dimensional array containing the y coordinates of the 
-        interrogation window centers, in pixels.
-        
-    u : 2d np.ndarray
-        a two dimensional array containing the u velocity components,
-        in pixels/seconds.
-        
-    v : 2d np.ndarray
-        a two dimensional array containing the v velocity components,
-        in pixels/seconds.
-        
-    mask : 2d np.ndarray
-        a two dimensional boolen array where elements corresponding to
-        invalid vectors are True.
-        
-    filename : string
-        the path of the file where to save the flow field
-        
-    fmt : string
-        a format string. See documentation of numpy.savetxt
-        for more details.
-    
-    delimiter : string
-        character separating columns
-        
-    Examples
-    --------
-    
-    >>> openpiv.tools.save( x, y, u, v, 'field_001.txt', fmt='%6.3f', delimiter='\t')
-    
-    """
-    # build output array
-    out = np.vstack( [m.ravel() for m in [x, y, u, v, mask] ] )
-            
-    # save data to file.
-    np.savetxt( filename, out.T, fmt=fmt, delimiter=delimiter )
-
-def display( message ):
-    """Display a message to standard output.
-    
-    Parameters
-    ----------
-    message : string
-        a message to be printed
-    
-    """
-    sys.stdout.write(message)
-    sys.stdout.write('\n')
-    sys.stdout.flush()
 
 class Multiprocesser():
     def __init__ ( self, data_dir, pattern_a, pattern_b  ):
@@ -376,5 +360,86 @@ class Multiprocesser():
         else:
             for image_pair in image_pairs:
                 func( image_pair )
-                
-                
+
+class PivParamsError(Exception):
+    pass
+ 
+
+def display_vector_field( filename,**kw):
+    """ Displays quiver plot of the data stored in the file 
+    
+    
+    Parameters
+    ----------
+    filename :  string
+        the absolute path of the text file
+    
+    Key arguments   : (additional parameters, optional)
+        *scale*: [None | float]
+        *width*: [None | float]
+    
+    
+    See also:
+    ---------
+    matplotlib.pyplot.quiver
+    
+        
+    Examples
+    --------
+    
+    >>> openpiv.tools.display_vector_field('./exp1_0000.txt',scale=100, width=0.0025) 
+
+    
+    """
+    
+    a = np.loadtxt(filename)
+    pl.figure()
+    pl.hold(True)
+    invalid = a[:,4].astype('bool')
+    
+    valid = ~invalid
+    pl.quiver(a[invalid,0],a[invalid,1],a[invalid,2],a[invalid,3],color='r',**kw)
+    pl.quiver(a[valid,0],a[valid,1],a[valid,2],a[valid,3],color='b',**kw)
+    pl.draw()
+    pl.show()
+
+def imread( filename ):
+    """Read an image file into a numpy array
+    using scipy.misc.imread
+    
+    Parameters
+    ----------
+    filename :  string
+        the absolute path of the image file 
+        
+    Returns
+    -------
+    frame : np.ndarray
+        a numpy array with grey levels
+        
+        
+    Examples
+    --------
+    
+    >>> image = openpiv.tools.imread( 'image.bmp' )
+    >>> print image.shape 
+        (1280, 1024)
+    
+    
+    """
+    
+    return scipy.misc.imread( filename, flatten=0).astype(np.int32)
+
+
+def display( message ):
+    """Display a message to standard output.
+    
+    Parameters
+    ----------
+    message : string
+        a message to be printed
+    
+    """
+    sys.stdout.write(message)
+    sys.stdout.write('\n')
+    sys.stdout.flush()
