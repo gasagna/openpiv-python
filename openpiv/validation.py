@@ -49,27 +49,17 @@ def global_val( u, v, u_thresholds, v_thresholds ):
         
     Returns
     -------
-    u : 2d np.ndarray
-        a two dimensional array containing the u velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
-    v : 2d np.ndarray
-        a two dimensional array containing the v velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
     mask : boolean 2d np.ndarray 
         a boolean array. True elements corresponds to outliers.
         
     """
     
     ind = u < u_thresholds[0] or u > u_thresholds[1] or v < v_thresholds[0] or v > v_thresholds[1]
-    u[ind] = np.nan
-    v[ind] = np.nan
     
     mask = np.zeros(u.shape, dtype=bool)
     mask[ind] = True
     
-    return u, v, mask
+    return mask
     
 def global_std( u, v, std_threshold=3 ):
     """Eliminate spurious vectors with a global threshold defined by the standard deviation
@@ -94,14 +84,6 @@ def global_std( u, v, std_threshold=3 ):
         
     Returns
     -------
-    u : 2d np.ndarray
-        a two dimensional array containing the u velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
-    v : 2d np.ndarray
-        a two dimensional array containing the v velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
     mask : boolean 2d np.ndarray 
         a boolean array. True elements corresponds to outliers.
         
@@ -110,13 +92,10 @@ def global_std( u, v, std_threshold=3 ):
     vel_magnitude = u**2 + v**2
     ind = vel_magnitude > std_threshold*np.std(vel_magnitude)
     
-    u[ind] = np.nan
-    v[ind] = np.nan
-    
     mask = np.zeros(u.shape, dtype=bool)
     mask[ind] = True
     
-    return u, v, mask
+    return mask
 
 def sig2noise_val( u, v, sig2noise, threshold=1.3):
     """Eliminate spurious vectors from cross-correlation signal to noise ratio.
@@ -141,14 +120,6 @@ def sig2noise_val( u, v, sig2noise, threshold=1.3):
         
     Returns
     -------
-    u : 2d np.ndarray
-        a two dimensional array containing the u velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
-    v : 2d np.ndarray
-        a two dimensional array containing the v velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
     mask : boolean 2d np.ndarray 
         a boolean array. True elements corresponds to outliers.
     
@@ -159,14 +130,10 @@ def sig2noise_val( u, v, sig2noise, threshold=1.3):
     """
     
     ind = sig2noise < threshold
-
-    u[ind] = np.nan
-    v[ind] = np.nan
-    
     mask = np.zeros(u.shape, dtype=bool)
     mask[ind] = True
     
-    return u, v, mask
+    return mask
 
 def local_median_val( u, v, u_threshold, v_threshold, size=1 ):
     """Eliminate spurious vectors with a local median threshold.
@@ -192,14 +159,6 @@ def local_median_val( u, v, u_threshold, v_threshold, size=1 ):
         
     Returns
     -------
-    u : 2d np.ndarray
-        a two dimensional array containing the u velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
-    v : 2d np.ndarray
-        a two dimensional array containing the v velocity component, 
-        where spurious vectors have been replaced by NaN.
-        
     mask : boolean 2d np.ndarray 
         a boolean array. True elements corresponds to outliers.
         
@@ -209,11 +168,7 @@ def local_median_val( u, v, u_threshold, v_threshold, size=1 ):
     vm = median_filter( v, size=2*size+1 )
     
     ind = (np.abs( (u-um) ) > u_threshold) | (np.abs( (v-vm) ) > v_threshold)
-    
-    u[ind] = np.nan
-    v[ind] = np.nan
-    
     mask = np.zeros(u.shape, dtype=bool)
     mask[ind] = True
     
-    return u, v, mask
+    return mask
