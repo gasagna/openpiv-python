@@ -121,7 +121,7 @@ def replace_nans( np.ndarray[DTYPEf_t, ndim=2] array, int max_iter, float tol, i
                 
         # check if mean square difference between values of replaced 
         #elements is below a certain tolerance
-        if np.mean( (replaced_new-replaced_old)**2 ) < tol:
+        if np.sqrt( np.mean( (replaced_new-replaced_old)**2 ) )< tol:
             break
         else:
             for l in range(n_nans):
