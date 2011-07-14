@@ -8,15 +8,11 @@ __root__ = _osp.abspath(_osp.dirname(__file__))
 
 # this is the location of the default parameters file
 # which we have distributed with openpiv.
-__default_config_file__ = _osp.join( __root__, 'data/defaults-processing-parameters.cfg' )
+__default_process_parameters_file__ = _osp.join( __root__, 'data/defaults-processing-parameters.cfg' )
 
 
-# import default modules
-import openpiv.tools
-import openpiv.pyprocess
-import openpiv.scaling
-import openpiv.validation
-import openpiv.filters
-import openpiv.ui
-import openpiv.process
-import openpiv.lib
+from objects import *
+import pyprocess
+import process
+import validation
+import lib
