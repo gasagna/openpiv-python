@@ -44,7 +44,18 @@ class TestImagePair( unittest.TestCase ):
         del self.params['method']
         self.assertRaises( openpiv.objects.PivParamsError, ip.process, self.params )
         
-        
+class TestFlowField( unittest.TestCase ):
+    def setUp(self):
+        self.file_a = os.path.abspath( files_a[0] )
+        self.file_b = os.path.abspath( files_b[0] )
+        self.params = openpiv.objects.ProcessParameters()
+    
+    def test( self ):
+        ip = openpiv.objects.ImagePair( self.file_a, self.file_b, index=1 )
+        # set computation of signal2noise ratio 
+        self.params['sig2noise_method'] = 'peak2peak'
+        flow_field = ip.process( self.params )
+        self.assertTrue( isinstance( flow_field, openpiv.objects.FlowField ) )
         
         
         
