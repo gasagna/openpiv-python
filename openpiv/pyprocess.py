@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """This module contains a pure python implementation of the basic 
 cross-correlation algorithm for PIV image processing."""
 
@@ -20,10 +18,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+__all__ = ['get_coordinates', 'get_field_shape', 'moving_window_array', 
+           'find_first_peak', 'find_second_peak', 'find_subpixel_peak_position',
+           'sig2noise_ratio', 'correlate_windows', 'normalize_intensity',
+           'piv', 'display_vector_field', 'imread', 'save']
 
-import numpy.lib.stride_tricks
+import glob, sys, os
+
 import numpy as np
-import openpiv.process
+import numpy.lib.stride_tricks
+import scipy.misc
+import matplotlib.pyplot as pl
 
 
 def get_coordinates( image_size, window_size, overlap ):
@@ -461,7 +466,7 @@ def piv ( frame_a, frame_b, window_size=32, overlap=16, dt=1.0, corr_method = 'f
     
     # get shape of the output so that we can preallocate 
     # memory for velocity array
-    n_rows, n_cols = openpiv.process.get_field_shape( image_size=frame_a.shape, window_size=window_size, overlap=overlap )
+    n_rows, n_cols = get_field_shape( image_size=frame_a.shape, window_size=window_size, overlap=overlap )
     
     u = np.empty(n_rows*n_cols)
     v = np.empty(n_rows*n_cols)
@@ -473,20 +478,133 @@ def piv ( frame_a, frame_b, window_size=32, overlap=16, dt=1.0, corr_method = 'f
     # for each interrogation window
     for i in range(windows_a.shape[0]):
         # get correlation window
-        corr = openpiv.process.correlate_windows( windows_a[i], windows_b[i], corr_method = corr_method, nfftx=nfftx, nffty=nffty )
+        corr = correlate_windows( windows_a[i], windows_b[i], corr_method = corr_method, nfftx=nfftx, nffty=nffty )
         
         # get subpixel approximation for peak position row and column index
-        row, col = openpiv.process.find_subpixel_peak_position( corr, subpixel_method=subpixel_method)
+        row, col = find_subpixel_peak_position( corr, subpixel_method=subpixel_method)
         
         # get displacements
         u[i], v[i] = -(col - corr.shape[1]/2), (row - corr.shape[0]/2)
         
         # get signal to noise ratio
         if sig2noise_method:
-            sig2noise[i] = openpiv.process.sig2noise_ratio( corr, sig2noise_method=sig2noise_method, width=width )
+            sig2noise[i] = sig2noise_ratio( corr, sig2noise_method=sig2noise_method, width=width )
     
     # return output depending if user wanted sig2noise information
     if sig2noise_method:
         return u.reshape(n_rows, n_cols)/dt, v.reshape(n_rows, n_cols)/dt, sig2noise.reshape(n_rows, n_cols)
     else:
         return u.reshape(n_rows, n_cols)/dt, v.reshape(n_rows, n_cols)/dt
+
+def display_vector_field( filename,**kw):
+    """ Displays quiver plot of the data stored in the file 
+    
+    
+    Parameters
+    ----------
+    filename :  string
+        the absolute path of the text file
+    
+    Key arguments   : (additional parameters, optional)
+        *scale*: [None | float]
+        *width*: [None | float]
+    
+    
+    See also:
+    ---------
+    matplotlib.pyplot.quiver
+    
+        
+    Examples
+    --------
+    
+    >>> openpiv.tools.display_vector_field('./exp1_0000.txt',scale=100, width=0.0025) 
+
+    
+    """
+    
+    a = np.loadtxt(filename)
+    pl.figure()
+    pl.hold(True)
+    invalid = a[:,4].astype('bool')
+    
+    valid = ~invalid
+    pl.quiver(a[invalid,0],a[invalid,1],a[invalid,2],a[invalid,3],color='r',**kw)
+    pl.quiver(a[valid,0],a[valid,1],a[valid,2],a[valid,3],color='b',**kw)
+    pl.draw()
+    pl.show()
+
+def imread( filename ):
+    """Read an image file into a numpy array
+    using scipy.misc.imread
+    
+    Parameters
+    ----------
+    filename :  string
+        the absolute path of the image file 
+        
+    Returns
+    -------
+    frame : np.ndarray
+        a numpy array with grey levels
+        
+        
+    Examples
+    --------
+    
+    >>> image = openpiv.tools.imread( 'image.bmp' )
+    >>> print image.shape 
+        (1280, 1024)
+    
+    
+    """
+    
+    return scipy.misc.imread( filename, flatten=0).astype(np.int32)
+
+def save( x, y, u, v, mask, filename, fmt='%8.4f', delimiter='\t' ):
+    """Save flow field to an ascii file.
+    
+    Parameters
+    ----------
+    x : 2d np.ndarray
+        a two dimensional array containing the x coordinates of the 
+        interrogation window centers, in pixels.
+        
+    y : 2d np.ndarray
+        a two dimensional array containing the y coordinates of the 
+        interrogation window centers, in pixels.
+        
+    u : 2d np.ndarray
+        a two dimensional array containing the u velocity components,
+        in pixels/seconds.
+        
+    v : 2d np.ndarray
+        a two dimensional array containing the v velocity components,
+        in pixels/seconds.
+        
+    mask : 2d np.ndarray
+        a two dimensional boolen array where elements corresponding to
+        invalid vectors are True.
+        
+    filename : string
+        the path of the file where to save the flow field
+        
+    fmt : string
+        a format string. See documentation of numpy.savetxt
+        for more details.
+    
+    delimiter : string
+        character separating columns
+        
+    Examples
+    --------
+    
+    >>> openpiv.tools.save( x, y, u, v, 'field_001.txt', fmt='%6.3f', delimiter='\t')
+    
+    """
+    # build output array
+    out = np.vstack( [m.ravel() for m in [x, y, u, v, mask] ] )
+            
+    # save data to file.
+    np.savetxt( filename, out.T, fmt=fmt, delimiter=delimiter )
+
