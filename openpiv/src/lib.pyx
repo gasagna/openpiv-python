@@ -1,4 +1,23 @@
-"""A module for various utilities and helper functions"""
+"""A module for various utilities and helper functions, needing speed for fast computations"""
+
+__licence__ = """
+Copyright (C) 2011  www.openpiv.net
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+__all__ = ['replace_nans', 'sincinterp']
 
 import numpy as np
 cimport numpy as np
@@ -129,7 +148,6 @@ def replace_nans( np.ndarray[DTYPEf_t, ndim=2] array, int max_iter, float tol, i
     
     return filled
 
-
 def sincinterp( np.ndarray[DTYPEi_t, ndim=2] image, np.ndarray[DTYPEf_t, ndim=2] x, np.ndarray[DTYPEf_t, ndim=2] y, int kernel_size=3 ):
     """Re-sample an image at intermediate positions between pixels.
     
@@ -198,7 +216,6 @@ def sincinterp( np.ndarray[DTYPEi_t, ndim=2] image, np.ndarray[DTYPEf_t, ndim=2]
                         else:
                             r[I,J] = r[I,J] + image[i,j] * sin( pi*(i-x[I,J]) )*sin( pi*(j-y[I,J]) )/( pi*pi*(i-x[I,J])*(j-y[I,J]))
     return r
-    
-    
+
 cdef extern from "math.h":
     double sin(double)
