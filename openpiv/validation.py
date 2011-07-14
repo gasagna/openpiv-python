@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """A module for spurious vector detection."""
 
 __licence__ = """
@@ -19,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+__all__ = ['global_std', 'global_val', 'sig2noise_val', 'local_median_val']
 
 import numpy as np
 from scipy.ndimage import median_filter
-
 
 def global_val( u, v, u_thresholds, v_thresholds ):
     """Eliminate spurious vectors with a global threshold.
