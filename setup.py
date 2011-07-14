@@ -39,7 +39,7 @@ data_files = [ ('share/docs/openpiv/examples/example1', glob.glob('openpiv/docs/
 
 # packages that we want ot distribute. THis is how
 # we have divided the openpiv package.
-packages = ['openpiv', 'openpiv.ui']
+packages = ['openpiv']
 
 
 # script are executable files that will be run to load the gui or something else.
