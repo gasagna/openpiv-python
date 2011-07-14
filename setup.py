@@ -22,19 +22,19 @@ ext_modules = [module1, module2]
 # Package data are those filed 'strictly' needed by the program
 # to function correctly.  Images, default configuration files, et cetera.
 package_data =  [ 'data/defaults-processing-parameters.cfg', 
-                  'data/ui_resources.qrc',
-                  'data/images/*.png',
-                  'data/icons/*.png',
+                  #'data/ui_resources.qrc',
+                  #'data/images/*.png',
+                  #'data/icons/*.png',
                 ]
 
 
 # data files are other files which are not required by the program but 
 # we want to ditribute as well, for example documentation.
-data_files = [ ('share/docs/openpiv/examples/example1', glob.glob('openpiv/docs/examples/example1/*') ),
-               ('share/docs/openpiv/examples/gurney-flap', glob.glob('openpiv/docs/examples/gurney-flap/*') ),
-               ('share/docs/openpiv', ['README'] ),
-               ('share/openpiv/ui', glob.glob('openpiv/data/ui/*.ui') ),
-             ]
+#data_files = [ ('share/docs/openpiv/examples/example1', glob.glob('openpiv/docs/examples/example1/*') ),
+#               ('share/docs/openpiv/examples/gurney-flap', glob.glob('openpiv/docs/examples/gurney-flap/*') ),
+#               ('share/docs/openpiv', ['README'] ),
+#               ('share/openpiv/ui', glob.glob('openpiv/data/ui/*.ui') ),
+#             ]
 
 
 # packages that we want ot distribute. THis is how
@@ -43,9 +43,7 @@ packages = ['openpiv']
 
 
 # script are executable files that will be run to load the gui or something else.
-scripts = ['openpiv/openpiv']
-
-
+# scripts = ['openpiv/openpiv']
 
 setup(  name = "OpenPiv",
         version = "0.1",
@@ -63,8 +61,6 @@ setup(  name = "OpenPiv",
         ext_modules = ext_modules, 
         packages = packages,
         cmdclass = {'build_ext': build_ext},
-        scripts = scripts,
         package_data = {'': package_data},
-        data_files = data_files
         )
 
