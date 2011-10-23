@@ -22,6 +22,8 @@ ext_modules = [module1, module2]
 # Package data are those filed 'strictly' needed by the program
 # to function correctly.  Images, default configuration files, et cetera.
 package_data =  [ 'data/defaults-processing-parameters.cfg', 
+                  'openpiv/lib/process.c',
+                  'openpiv/lib/lib.c',
                   #'data/ui_resources.qrc',
                   #'data/images/*.png',
                   #'data/icons/*.png',
@@ -37,7 +39,7 @@ package_data =  [ 'data/defaults-processing-parameters.cfg',
 #             ]
 
 
-# packages that we want ot distribute. THis is how
+# packages that we want ot distribute. This is how
 # we have divided the openpiv package.
 packages = ['openpiv']
 
@@ -53,7 +55,7 @@ setup(  name = "OpenPiv",
         license = "GPL v3",
         url = "www.openpiv.net",
         long_description =  """OpenPIV is an initiative of scientists to
-                            develop a software, algorithms and methods
+                            develop software, algorithms and methods
                             for the state-of-the-art experimental tool
                             of Particle Image Velocimetry (PIV) which 
                             are free, open source, and easy to operate.""",
@@ -61,6 +63,6 @@ setup(  name = "OpenPiv",
         ext_modules = ext_modules, 
         packages = packages,
         cmdclass = {'build_ext': build_ext},
-        package_data = {'': package_data},
+        package_data = {'openpiv': package_data},
         )
 

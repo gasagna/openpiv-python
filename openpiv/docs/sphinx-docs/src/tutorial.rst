@@ -2,51 +2,24 @@
 Tutorial
 ========
 
-This is a series of examples and tutorials which focuses on showing features and capabilities of OpenPIV, so that after reading you should be able to set up scripts for your own analyses. If you are looking for a complete reference to the OpenPiv api, please look at :ref:`api_reference`. It is assumed that you have Openpiv installed on your system along with a working python environment as well as the necessary :ref:`OpenPiv dependencies <dependencies>`. For installation details on various platforms see :ref:`installation_instruction`. 
+This is a series of examples and tutorials which focuses on showing features and capabilities of OpenPIV, so that after reading you should be able to set up scripts for your own analyses. If you are looking for a complete reference to the OpenPiv api, please look at :ref:`api_reference`, in which a detailed description of the structure of the OpenPiv package is given. It is assumed that you have Openpiv installed on your system along with a working python environment as well as the necessary :ref:`OpenPiv dependencies <dependencies>`. For installation details on various platforms see :ref:`installation_instruction`. 
 
 
-In this tutorial we are going to use some example data provided with the source distribution of OpenPIV. Altough it is not necessary, you may find helpful to actually run the code examples as the tutorial progresses. If you downloaded a tarball file, you should find these examples under the directory openpiv/docs/examples. Similarly if you cloned the git repository. If you cannot find them, dowload example images as well as the python source code from the :ref:`downloads <downloads>` page.
+In this tutorial we are going to use some example data provided with the source distribution of OpenPIV. Altough it is not necessary, you may find helpful to actually run the code examples as the tutorial progresses. If you downloaded a tarball file, you should find these examples under the directory openpiv/docs/examples. Similarly if you cloned the git repository. If you cannot find them, download example images as well as the python source code from the :ref:`downloads <downloads>` page.
 
 
 First example: how to process an image pair
 ===========================================
 
-The first example shows how to process a single image pair. This is a common task and may be useful if you are studying how does a certain algorithm behaves. We assume that the current working directory is where the two image of the first example are located. Here is the code::
+The first example shows how to process a single image pair. This is a common task and may be useful if you are studying how does a certain algorithm behaves. We assume that the current working directory is where the two image of the first example are located. 
+    
+We first import the OpenPiv modules.::
 
+    import openpiv
 
-    import openpiv.tools
-    import openpiv.process
-    import openpiv.scaling
-    
-    frame_a  = openpiv.tools.imread( 'exp1_001_a.bmp' )
-    frame_b  = openpiv.tools.imread( 'exp1_001_b.bmp' )
-    
-    u, v, sig2noise = openpiv.process.extended_search_area_piv( frame_a, frame_b, window_size=24, overlap=12, dt=0.02, search_area_size=64, sig2noise_method='peak2peak' )
-    
-    x, y = openpiv.process.get_coordinates( image_size=frame_a.shape, window_size=24, overlap=12 )
-    
-    u, v, mask = openpiv.validation.sig2noise_val( u, v, sig2noise, threshold = 1.3 )
-    
-    u, v = openpiv.filters.replace_outliers( u, v, method='localmean', n_iter=10, kernel_size=2)
-    
-    x, y, u, v = openpiv.scaling.uniform(x, y, u, v, scaling_factor = 96.52 )
-    
-    openpiv.tools.save(x, y, u, v, 'exp1_001.txt' )
-    
-This code can be executed as a script, or you can type each command in an `Ipython <http://ipython.scipy.org/moin/>`_ console with pylab mode set, so that you can visualize result as they are available.  I will follow the second option and i will present the results of each command.
-    
-We first import some of the openpiv modules.::
+To process an image pair we create a :py:class:`openpiv.ImagePair` object.
 
-    import openpiv.tools
-    import openpiv.process
-    import openpiv.scaling
-    
-Module ``openpiv.tools`` contains mostly contains utilities and tools, such as file I/O and multiprocessingvfacilities. Module ``openpiv.process`` contains advanced algorithms for PIV analysis and several helper functions. Last, module ``openpiv.scaling`` contains functions for field scaling.
-
-We then load the two image files into numpy arrays::
-
-    frame_a  = openpiv.tools.imread( 'exp1_001_a.bmp' )
-    frame_b  = openpiv.tools.imread( 'exp1_001_b.bmp' )
+    im = openpiv.ImagePair( file_a = 'exp1_001_a.bmp', file_b='exp1_001_b.bmp', index=0 )
     
 Inspecting the attributes of one of the two images we can see that::
 

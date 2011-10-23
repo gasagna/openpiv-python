@@ -1,2 +1,5 @@
 include openpiv/src/process.pyx
 include openpiv/src/lib.pyx
+include openpiv/src/process.c
+include openpiv/src/lib.c
+include data/defaults-processing-parameters.cfg

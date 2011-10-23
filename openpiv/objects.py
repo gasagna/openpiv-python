@@ -28,7 +28,7 @@ import numpy as np
 import scipy.misc
 
 import openpiv.process
-import openpiv.validation
+from openpiv.validation import global_std, global_val, local_median_val, sig2noise_val
 import openpiv.lib
 
 class ImagePair():
@@ -118,19 +118,19 @@ class FlowField():
         
     def global_validation ( self, u_thresholds, v_thresholds ):
         """Validation step."""
-        self.mask = openpiv.validation.global_val( self.u, self.v, u_thresholds, v_thresholds )
+        self.mask = global_val( self.u, self.v, u_thresholds, v_thresholds )
             
     def global_std_validation ( self, std_threshold ):
         """Validation step."""
-        self.mask = openpiv.validation.global_std( self.u, self.v, std_threshold )
+        self.mask = global_std( self.u, self.v, std_threshold )
             
     def sig2noise_validation ( self, sn_threshold):
         """Validation step."""
-        self.mask = openpiv.validation.sig2noise_val( self.u, self.v, self.s2n, sn_threshold )
+        self.mask = sig2noise_val( self.u, self.v, self.s2n, sn_threshold )
             
     def local_median_validation ( self, u_threshold, v_threshold, size):
         """Validation step."""
-        self.mask = openpiv.validation.local_median_val( self.u, self.v, u_threshold, v_threshold, size)
+        self.mask = local_median_val( self.u, self.v, u_threshold, v_threshold, size)
         
     def replace_outliers( self, max_iter=5, tol=1e-3, kernel_size=1 ):
         """Replace invalid vectors in the velocity field using an iterative image inpainting algorithm.

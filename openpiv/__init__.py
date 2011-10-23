@@ -12,7 +12,7 @@ __default_process_parameters_file__ = _osp.join( __root__, 'data/defaults-proces
 
 
 from objects import *
-import pyprocess
-import process
 import validation
+import process
+import pyprocess
 import lib
