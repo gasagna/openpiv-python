@@ -200,7 +200,7 @@ def extended_search_area_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
     else:
         return u, v
     
-class CorrelationFunction( ):
+class CorrelationFunction( object ):
     def __init__ ( self, corr ):
         """A class representing a cross correlation function.
         

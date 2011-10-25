@@ -14,7 +14,7 @@ module2 = Extension(    name         = "openpiv.lib",
                         sources      = ["openpiv/src/lib.pyx"],
                         include_dirs = [numpy.get_include()],
                     )
-
+                    
 # a list of the extension modules that we want to distribute
 ext_modules = [module1, module2]
 
