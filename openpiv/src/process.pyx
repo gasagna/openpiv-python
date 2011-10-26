@@ -44,8 +44,7 @@ def extended_search_area_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
                               str subpixel_method='gaussian',
                               sig2noise_method=None,
                               int width=2,
-                              nfftx=None,
-                              nffty=None):
+                              nfft=2):
     """
     The implementation of the one-step direct correlation with different 
     size of the interrogation window and the search area. The increased
@@ -98,14 +97,10 @@ def extended_search_area_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
         correlation peak to ignore for finding the second
         peak. [default: 2]. Only used if ``sig2noise_method==peak2peak``.
         
-    nfftx   : int
-        the size of the 2D FFT in x-direction, 
-        [default: 2 x windows_a.shape[0] is recommended]
+    nfft  : int
+        the size of the 2D FFT, 
+        [default: 2 x window_size is recommended]
         
-    nffty   : int
-        the size of the 2D FFT in y-direction, 
-        [default: 2 x windows_a.shape[1] is recommended]
-
     
     Returns
     -------
@@ -175,7 +170,7 @@ def extended_search_area_piv( np.ndarray[DTYPEi_t, ndim=2] frame_a,
                         search_area[k,l] = frame_b[ i+window_size/2-search_area_size/2+k, j+window_size/2-search_area_size/2+l ]
                         
             # compute correlation map 
-            corr = correlate_windows( search_area, window_a, nfftx=nfftx, nffty=nffty )
+            corr = correlate_windows( search_area, window_a, nfft=nfft )
             c = CorrelationFunction( corr )
             
             # find subpixel approximation of the peak center
@@ -445,7 +440,7 @@ def get_field_shape ( image_size, window_size, overlap ):
     return ( (image_size[0] - window_size)//(window_size-overlap)+1, 
              (image_size[1] - window_size)//(window_size-overlap)+1 )
 
-def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nffty = None ):
+def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None ):
     """Compute correlation function between two interrogation windows.
     
     The correlation function can be computed by using the correlation 
@@ -480,11 +475,9 @@ def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nf
     """
     
     if corr_method == 'fft':
-        if nfftx is None:
-            nfftx = 2*window_a.shape[0]
-        if nffty is None:
-            nffty = 2*window_a.shape[1]
-        return fftshift(irfft2(rfft2(normalize_intensity(window_a),s=(nfftx,nffty))*np.conj(rfft2(normalize_intensity(window_b),s=(nfftx,nffty)))).real, axes=(0,1)  )
+        if nfft is None:
+            nfft = 2*window_a.shape[1]
+        return fftshift(irfft2(rfft2(normalize_intensity(window_a),s=(nfft,nfft))*np.conj(rfft2(normalize_intensity(window_b),s=(nfft,nfft)))).real, axes=(0,1)  )
     elif corr_method == 'direct':
         return convolve(normalize_intensity(window_a), normalize_intensity(window_b[::-1,::-1]), 'full')
     else:
