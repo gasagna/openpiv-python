@@ -8,3 +8,4 @@ build/
 *.txt
 /setup.cfg
 tutorial-part1
+*~
