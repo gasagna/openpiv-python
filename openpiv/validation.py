@@ -139,7 +139,9 @@ def local_median_val( u, v, u_threshold, v_threshold, size=1 ):
     This validation method tests for the spatial consistency of the data.
     Vectors are classified as outliers and replaced with Nan (Not a Number) if
     the absolute difference with the local median is greater than a user 
-    specified threshold. The median is computed for both velocity components.
+    specified threshold. The median is computed for both velocity components 
+    and a vector is rejected if at least one of its velocity components does 
+    not pass the validation test.
     
     Parameters
     ----------
@@ -154,12 +156,15 @@ def local_median_val( u, v, u_threshold, v_threshold, size=1 ):
         
     v_threshold : float
         the threshold value for component v
+    
+    size : int 
+        the local median is computed from the vectors in a square 
+        region around the vector which is ``2*size+1`` wide.
         
     Returns
     -------
     mask : boolean 2d np.ndarray 
         a boolean array. True elements corresponds to outliers.
-        
     """
     
     um = median_filter( u, size=2*size+1 )
