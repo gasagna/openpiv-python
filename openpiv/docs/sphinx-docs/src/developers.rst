@@ -28,18 +28,15 @@ This is absolutely not a comprehensive guide of git development, and it is only 
 
 11) Create another branch for a new feature.
 
-Which language can i use?
--------------------------
-As a general rule, we use Python where it does not make any difference with code speed. In those situations where Python speed is
-the bottleneck, we have some possibilities, depending on your skills and background. If something has to be written from scratch
-use the first language from the following which you are confortable with: cython, c, c++, fortran. If you have existing, debugged, tested code that
-you would like to share, then no problem. We accept it, whichever language may be written in!
+Which language should i use?
+----------------------------
+As a general rule, we use Python where it does not make any difference in terms of code speed. We use python as main language because of its powerul scripting capabilties and because of its large scientific open source ecosystem.  In those situations where Python speed is the bottleneck, we have some possibilities, depending on your skills and background. If something has to be written from scratch
+use the first language from the following which you are confortable with: cython, c, c++, fortran. If you have existing, debugged, tested code thatyou would like to share, then no problem. We accept it, whichever language may be written in!
 
 Things OpenPiv currently needs, (in order of importance)
 --------------------------------------------------------
-* The implementation of advanced processing algorithms
-* Good documentations
-* Flow field filtering and validation functions
-* Cython wrappers for c/c++ codes.
-* a good graphical user interface
-
+* Good documentation and examples, so that new users can step in
+* Advanced processing algorithms
+* Post-processing capabilities
+* Unit testing
+* A graphical user interface

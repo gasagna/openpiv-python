@@ -43,58 +43,27 @@ The binary (32 or 64 bit) Enthought Python Distribution (EPD) is recommended.  V
 
 Get OpenPIV source code!
 ========================
+To get OpenPiv source code check our git repository store at `<https://github.com/alexlib/openpiv-python>`_. To download the source code on your machine, you may want to set up git on your computer, so that you can follow the development and get the latest version.  Please look at http://help.github.com/ which provide extensive help for how to set up git. If you are not confortable on setting up git you may want to download a `tarball <https://github.com/alexlib/openpiv-python/downloads>`_ containing the source code from the Github repository. 
 
-At this moment the only way to get OpenPIV's source code is using git. 
-`Git <http://en.wikipedia.org/wiki/Git_%28software%29>`_ Git is a distributed revision control system and 
-our code is hosted at `GitHub <www.github.com>`_.
-
-Bleeding edge development version
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you are interested in the source code you are welcome to browse out git repository
-stored at https://github.com/alexlib/openpiv-python. If you want to download the source code
-on your machine, for testing, you need to set up git on your computer. Please look at 
-http://help.github.com/ which provide extensive help for how to set up git.
-
-To follow the development of OpenPIV, clone our repository with the command::
+To get the source code using git, clone our repository with the command::
 
     git clone http://github.com/alexlib/openpiv-python.git
 
-and update from time to  time. You can also download a tarball containing everything.
+and update from time to time with::
 
-Then add the path where the OpenPIV source are to the PYTHONPATH environment variable, so 
-that OpenPIV module can be imported and used in your programs. Remeber to build the extension
-with :: 
+    git pull
 
-    python setup.py build 
-
-.. Stable source distribution
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. If you do not want to follow the development of OpenPIV and you prefer a more stable
-.. version, download the source distributions available at http://www.openpiv.sourceforge.net,
-.. in the downloads page. Then unpack it and execute the following command::
-
-..    python setupy.py install --prefix=$DIR
+Then, to install OpenPiv on your machine, run::
     
-.. where ``$DIR`` is the folder you want ot install OpenPIV in. If you want to install it system
-.. wide omit the ``--prefix`` option, but you should have root priviles to do so. Remember to 
-.. update the PYTHONPATH environment variable if you used a custom installation directory.
-
-
-.. Download pre-built binary distributions
-.. =======================================
-
-.. For Windows we provide pre-built distributions which can be used without the hassles
-.. of compilation and other boring things you may not want to dig into. This is currently a work
-.. in progress. Check back soon!
-
-
+    python setupy.py install --prefix=$DIR
+    
+where ``$DIR`` is the folder you want to install OpenPIV in. If you want to install it system-wide omit the ``--prefix`` option, but you should have root priviles to do so. Remember to update the PYTHONPATH environment variable if you used a custom installation directory. If you downloaded the tarball you should run this command, too.
 
 Having problems?
 ================
 If you encountered some issues, found difficult to install OpenPIV following these instructions
-please drop us an email to openpiv-develop@lists.sourceforge.net , so that we can help you and 
-improve this page!
+please drop us an email to openpiv-develop@lists.sourceforge.net, so that we can help you and 
+improve this page for other users. We also provide support on how to use OpenPiv, so you are welcome to send us a mail for any questions you may have.
 
 
 
