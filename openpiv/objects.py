@@ -271,7 +271,7 @@ class FlowField():
     def __init__ ( self, x, y, u, v, s2n=None, index=0 ):
         """A class for holding velocity data for validation/interpolation/postprocessing.
         
-        This class represents and hold information about the velocity 
+        This class represents and holds information about the velocity 
         field as obtained from the processing of an image pair. Additionally, 
         this class can be instantiated from user defined velocity fields
         to post-process the data.
@@ -344,19 +344,83 @@ class FlowField():
         self.index = index
         
     def global_validation ( self, u_thresholds, v_thresholds ):
-        """Validation step."""
+        """Eliminate spurious vectors with a global threshold.
+    
+        This validation method tests for the spatial consistency of the data
+        and a vector is identified as an outlier if at least one of the two 
+        velocity components is out of a specified global range.
+        
+        Parameters
+        ----------
+        u_thresholds: two elements array like
+            u_thresholds = (u_min, u_max). If ``u<u_{min}`` or ``u>u_{max}``
+            the vector is treated as an outlier.
+            
+        v_thresholds: two elements tuple
+            ``v_thresholds = (v_min, v_max)``. If ``v<v_{min}`` or ``v>v_{max}``
+            the vector is treated as an outlier.
+               
+        """
         self.mask = global_val( self.u, self.v, u_thresholds, v_thresholds )
             
-    def global_std_validation ( self, std_threshold ):
-        """Validation step."""
+    def global_std_validation ( self, std_threshold=3 ):
+        """Eliminate spurious vectors with a global threshold 
+        defined by the standard deviation. 
+    
+        This validation method tests for the spatial consistency of the data
+        and a vector is identified as an outlier if at least one of the two 
+        velocity components is out of a specified global range.
+        
+        Parameters
+        ----------
+        std_threshold: float
+            If the sum of the squared components of a vector is larger than 
+            ``std_threshold`` times the standard deviation of the whole flow
+            field, then the vector is treated as an outlier. [default = 3]
+        """
         self.mask = global_std( self.u, self.v, std_threshold )
             
     def sig2noise_validation ( self, sn_threshold):
-        """Validation step."""
+        """Eliminate spurious vectors from cross-correlation signal to noise ratio.
+    
+        Replace spurious vectors with zero if signal to noise ratio
+        is below a specified threshold. To use this method the signal to
+        noise ratio for each vector must have been precomputed from the 
+        correlation map.
+        
+        Parameters
+        ----------
+        threshold: float
+            the signal to noise ratio threshold value.
+            
+        References
+        ----------
+        R. D. Keane and R. J. Adrian, Measurement Science & Technology,1990, 1, 1202-1215.
+        """
+        
         self.mask = sig2noise_val( self.u, self.v, self.s2n, sn_threshold )
             
     def local_median_validation ( self, u_threshold, v_threshold, size):
-        """Validation step."""
+        """Eliminate spurious vectors with a local median threshold.
+    
+        This validation method tests for the spatial consistency of the data.
+        Vectors are classified as outliers if the absolute difference with the
+        local median is greater than a user specified threshold. The median is 
+        computed for both velocity components and a vector is rejected if at
+        least one of its velocity components does not pass the validation test.
+        
+        Parameters
+        ----------
+        u_threshold : float
+            the threshold value for component u
+            
+        v_threshold : float
+            the threshold value for component v
+            
+        size : int 
+            the local median is computed from the vectors in a square 
+            region around the vector which is ``2*size+1`` wide.
+        """        
         self.mask = local_median_val( self.u, self.v, u_threshold, v_threshold, size)
         
     def replace_outliers( self, max_iter=5, tol=1e-3, kernel_size=1 ):
@@ -389,8 +453,27 @@ class FlowField():
         self.u = openpiv.lib.replace_nans( u, method='localmean', max_iter=max_iter, tol=tol, kernel_size=kernel_size )
         self.v = openpiv.lib.replace_nans( v, method='localmean', max_iter=max_iter, tol=tol, kernel_size=kernel_size )
         
-    def save_to_file( self, datadir, file_pattern='field-%05d', fmt='%10.5f', process_parameters=None ):
-        """Save flow field data to an ascii file."""
+    def save_to_file( self, datadir, file_pattern='field-%05d', fmt='%10.5f', process_parameters=True ):
+        """Save flow field data to an ascii file.
+        
+        Parameters
+        ----------
+        datadir : str
+            the directory where to save the data file
+            
+        file_pattern : str
+            the pattern of the file name. Usually multiple files 
+            are saved with similar name, differing only by an index number.
+            The pattern must contain a format specifier.
+            
+        fmt : string      
+            a format string to format data in the file
+            
+        process_parameters : boolean
+            if ``True`` write processing parameters summary as 
+            an hedaer of the file. 
+            
+        """
         
         # get name of the output file
         filename = os.path.join( os.path.abspath(datadir), file_pattern % self.index )
@@ -408,7 +491,6 @@ class FlowField():
             #write header
             header = """
             # Openpiv output data file: saved %s
-            # Made with Openpiv version %s
             # 
             # Processing parameters
             # ---------------------
@@ -416,12 +498,16 @@ class FlowField():
             # 
             # Data
             # ----
-            # x y u v mask""" % (time, version, params)
+            # x y u v mask""" % (time, params)
         
         np.savetxt( f, out.T, fmt=fmt )
         
     def rescale( self, scaling_factor ):
         """Apply an uniform scaling.
+        
+        A scaling factor is used to transform lengths and velocities
+        expressed in pixels and pixels/s to dimensional units.
+        
         
         Parameters
         ----------
@@ -440,13 +526,14 @@ class Multiprocesser():
         This class is responsible of loading image datasets
         and processing them. It has parallelization facilities
         to speed up the computation on multicore machines.
+        It uses the ``multiprocessing`` python module to 
+        spawn as many processes as requested.
         
-        It currently support only image pair obtained from 
+        It currently support only image pairs obtained from 
         conventional double pulse piv acquisitions. Support 
         for continuos time resolved piv acquistion is in the 
         future.
         """
-        
         # load lists of images 
         self.files_a = sorted( glob.glob( os.path.join( os.path.abspath(data_dir), pattern_a ) ) )
         self.files_b = sorted( glob.glob( os.path.join( os.path.abspath(data_dir), pattern_b ) ) )
@@ -461,8 +548,20 @@ class Multiprocesser():
         if not len(self.files_a):
             raise ValueError('Something failed loading the image file. No images were found. Please check directory and image pattern name.')
 
-    def run( self, n_proc ):
-        """Start to process images."""
+    def run( self, func, n_proc ):
+        """Start to process images.
+
+        Parameters
+        ----------
+        func : python callable
+            a function which is used to process image pairs.
+            See the documentation pages for details
+               
+        n_proc : int
+            the number of processes to spawn. Can be safely set to the number
+            of physical cores on the machine. To debug own code using this 
+            method it is advisable to set ``n_proc=1``.
+        """
         # create a list of tasks to be executed.
         image_pairs = [ (file_a, file_b, i) for file_a, file_b, i in zip( self.files_a, self.files_b, xrange(self.n_files) ) ]
         
