@@ -4,7 +4,6 @@ Installation instruction
 
 Dependencies
 ============
-
 OpenPIV would not have been possible if other great open source projects did not
 exist. We make extensive use of code and tools that other people have created, so 
 you should install them before you can use OpenPIV.
