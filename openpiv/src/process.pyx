@@ -440,7 +440,7 @@ def get_field_shape ( image_size, window_size, overlap ):
     return ( (image_size[0] - window_size)//(window_size-overlap)+1, 
              (image_size[1] - window_size)//(window_size-overlap)+1 )
 
-def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None ):
+def correlate_windows( window_a, window_b, corr_method = 'fft', nfft = None ):
     """Compute correlation function between two interrogation windows.
     
     The correlation function can be computed by using the correlation 
@@ -458,14 +458,9 @@ def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None ):
         one of the two methods currently implemented: 'fft' or 'direct'.
         Default is 'fft', which is much faster.
         
-    nfftx   : int
-        the size of the 2D FFT in x-direction, 
+    nfft   : int
+        the size of the 2D FFT 
         [default: 2 x windows_a.shape[0] is recommended].
-        
-    nffty   : int
-        the size of the 2D FFT in y-direction, 
-        [default: 2 x windows_a.shape[1] is recommended].
-        
         
     Returns
     -------
